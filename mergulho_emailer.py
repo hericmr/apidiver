@@ -191,10 +191,56 @@ def get_mare_descricao(mare):
     else:
         return "Alta", "Condições de maré críticas. Visibilidade subaquática comprometida."
 
+def get_correntes(lat, lon):
+    """Obtém dados de correntes marítimas da API StormGlass"""
+    try:
+        # Data atual em formato ISO
+        data_atual = datetime.now().isoformat()
+        
+        # URL da API StormGlass para correntes
+        url = f"https://api.stormglass.io/v2/tide/extremes/point"
+        
+        # Parâmetros da requisição
+        params = {
+            "lat": lat,
+            "lng": lon,
+            "start": data_atual,
+            "end": data_atual,
+            "key": CONFIG["STORMGLASS_API_KEY"]
+        }
+        
+        response = requests.get(url, params=params)
+        if response.ok:
+            dados = response.json()
+            if dados and dados.get('data'):
+                # Pega o primeiro registro de corrente
+                corrente = dados['data'][0]
+                velocidade = corrente.get('speed', 0)
+                direcao = corrente.get('type', 'unknown')
+                
+                return velocidade, direcao
+    except Exception as e:
+        print(f"Erro ao consultar correntes: {e}")
+    
+    # Fallback: retorna valores simulados em caso de erro
+    return 0.5, "unknown"
+
+def get_correntes_descricao(velocidade, direcao):
+    """Retorna descrição detalhada das correntes marítimas"""
+    if velocidade < 0.3:
+        return "Fraca", "Condições ideais para mergulho. Correntes suaves facilitam a navegação subaquática e reduzem o consumo de ar."
+    elif velocidade < 0.7:
+        return "Moderada", "Condições aceitáveis. Correntes moderadas requerem atenção durante o mergulho e podem aumentar o consumo de ar em 20-30%."
+    elif velocidade < 1.2:
+        return "Forte", "Condições desfavoráveis. Correntes fortes dificultam a navegação, aumentam o consumo de ar em 40-50% e requerem experiência avançada."
+    else:
+        return "Muito Forte", "Condições críticas. Correntes muito fortes tornam o mergulho perigoso, com alto risco de fadiga e consumo excessivo de ar. Não recomendado para mergulho."
+
 def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase, 
                         vento, descricao_vento, impacto_vento,
                         precipitacao, descricao_precip, impacto_precip,
                         mare, descricao_mare, impacto_mare,
+                        velocidade_corrente, descricao_corrente, impacto_corrente,
                         estacao, avaliacao, pontuacao, descricao, recomendacao):
     """Gera o conteúdo do email em formato texto simples"""
     return f"""
@@ -215,6 +261,9 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
 
 🌊 Maré: {descricao_mare} ({mare:.1f} m)
    {impacto_mare}
+
+🌊 Correntes: {descricao_corrente} ({velocidade_corrente:.1f} m/s)
+   {impacto_corrente}
 
 🌞 Estação: {estacao}
    {'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}
@@ -287,19 +336,24 @@ def main():
         print(f"🌊 Maré: {descricao_mare} ({mare:.1f} m)")
         print(f"   {impacto_mare}\n")
         
+        velocidade_corrente, direcao_corrente = get_correntes(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
+        descricao_corrente, impacto_corrente = get_correntes_descricao(velocidade_corrente, direcao_corrente)
+        print(f"🌊 Correntes: {descricao_corrente} ({velocidade_corrente:.1f} m/s)")
+        print(f"   {impacto_corrente}\n")
+        
         estacao = get_estacao()
         print(f"🌞 Estação: {estacao}")
         print(f"   {'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}\n")
         
         # Avaliar condições gerais com critérios mais rigorosos
-        # Condições ideais: vento < 10km/h, precipitação < 2mm, maré < 1.2m
-        condicoes_ideais = (vento < 10 and precipitacao < 2 and mare < 1.2)
+        # Condições ideais: vento < 10km/h, precipitação < 2mm, maré < 1.2m, corrente < 0.3m/s
+        condicoes_ideais = (vento < 10 and precipitacao < 2 and mare < 1.2 and velocidade_corrente < 0.3)
         
-        # Condições boas: vento < 15km/h, precipitação < 5mm, maré < 1.5m
-        condicoes_boas = (vento < 15 and precipitacao < 5 and mare < 1.5)
+        # Condições boas: vento < 15km/h, precipitação < 5mm, maré < 1.5m, corrente < 0.7m/s
+        condicoes_boas = (vento < 15 and precipitacao < 5 and mare < 1.5 and velocidade_corrente < 0.7)
         
-        # Condições regulares: vento < 20km/h, precipitação < 10mm, maré < 1.8m
-        condicoes_regulares = (vento < 20 and precipitacao < 10 and mare < 1.8)
+        # Condições regulares: vento < 20km/h, precipitação < 10mm, maré < 1.8m, corrente < 1.2m/s
+        condicoes_regulares = (vento < 20 and precipitacao < 10 and mare < 1.8 and velocidade_corrente < 1.2)
         
         # Ajuste de pontuação baseado na estação
         ajuste_estacao = 0
@@ -312,30 +366,43 @@ def main():
         else:  # Outono
             ajuste_estacao = 0
         
+        # Ajuste de pontuação baseado nas correntes
+        ajuste_correntes = 0
+        if velocidade_corrente < 0.3:
+            ajuste_correntes = 5  # Bônus para correntes fracas
+        elif velocidade_corrente < 0.7:
+            ajuste_correntes = 0  # Sem ajuste para correntes moderadas
+        elif velocidade_corrente < 1.2:
+            ajuste_correntes = -5  # Penalidade para correntes fortes
+        else:
+            ajuste_correntes = -10  # Penalidade maior para correntes muito fortes
+        
         if condicoes_ideais:
             avaliacao = "🌟 ÓTIMO"
-            pontuacao = min(95 + ajuste_estacao, 100)  # Máximo de 100
+            pontuacao = min(95 + ajuste_estacao + ajuste_correntes, 100)  # Máximo de 100
             descricao = "Condições climáticas ideais para mergulho."
             recomendacao = "Condições climáticas estáveis e favoráveis para prática de mergulho."
         elif condicoes_boas:
             avaliacao = "👍 BOM"
-            pontuacao = min(70 + ajuste_estacao, 95)  # Máximo de 95
+            pontuacao = min(70 + ajuste_estacao + ajuste_correntes, 95)  # Máximo de 95
             descricao = "Condições climáticas favoráveis para mergulho."
             recomendacao = "Condições climáticas aceitáveis para prática de mergulho."
         elif condicoes_regulares:
             avaliacao = "⚠️ REGULAR"
-            pontuacao = min(50 + ajuste_estacao, 70)  # Máximo de 70
+            pontuacao = min(50 + ajuste_estacao + ajuste_correntes, 70)  # Máximo de 70
             descricao = "Condições climáticas moderadas para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se cautela."
         else:
             avaliacao = "❌ NÃO RECOMENDADO"
-            pontuacao = max(27 + ajuste_estacao, 27)  # Mínimo de 27
+            pontuacao = max(27 + ajuste_estacao + ajuste_correntes, 27)  # Mínimo de 27
             descricao = "Condições climáticas desfavoráveis para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se adiar a prática de mergulho."
         
-        # Adiciona informação sobre o ajuste da estação na descrição
-        if ajuste_estacao != 0:
+        # Adiciona informação sobre os ajustes na descrição
+        if ajuste_estacao != 0 or ajuste_correntes != 0:
             descricao += f" {'(Bônus de +' + str(ajuste_estacao) + ' pontos pela estação)' if ajuste_estacao > 0 else '(Penalidade de ' + str(abs(ajuste_estacao)) + ' pontos pela estação)'}"
+            if ajuste_correntes != 0:
+                descricao += f" {'(Bônus de +' + str(ajuste_correntes) + ' pontos pelas correntes)' if ajuste_correntes > 0 else '(Penalidade de ' + str(abs(ajuste_correntes)) + ' pontos pelas correntes)'}"
         
         print("="*60)
         print(f"📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)")
@@ -349,6 +416,7 @@ def main():
             vento, descricao_vento, impacto_vento,
             precipitacao, descricao_precip, impacto_precip,
             mare, descricao_mare, impacto_mare,
+            velocidade_corrente, descricao_corrente, impacto_corrente,
             estacao, avaliacao, pontuacao, descricao, recomendacao
         )
         
