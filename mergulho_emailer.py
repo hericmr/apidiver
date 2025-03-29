@@ -253,17 +253,21 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
     </head>
     <body>
         <div class="container">
-            <h1>Relatório de Condições de Mergulho - {}</h1>
-            <p>Data e Hora: {}</p>
+            <h1>Relatório de Condições de Mergulho - {cidade}</h1>
+            <p>Data e Hora: {data_hora}</p>
             <div class="row">
-                {% for condition in conditions %}
-                {% endfor %}
+                {conditions_html}
             </div>
-            {{ evaluation.status }}
-            {{ evaluation.description }}
-            <div class="progress">
-                <div class="progress-bar" role="progressbar" style="width: {{ evaluation.score }}%;">
-                    {{ evaluation.score }}/100
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <h3>Avaliação Geral</h3>
+                    <div class="display-4">{evaluation_status}</div>
+                    <p class="lead">{evaluation_description}</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {evaluation_score}%">
+                            {evaluation_score}/100
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -272,7 +276,7 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     </body>
     </html>
-    """.format(CONFIG['CIDADE'], data_hora.strftime('%d/%m/%Y %H:%M'))
+    """
 
     conditions = [
         {
@@ -319,16 +323,10 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
         }
     ]
 
-    evaluation = {
-        "status": avaliacao,
-        "score": pontuacao,
-        "description": descricao
-    }
-
-    # Substituir variáveis no template
+    # Generate conditions HTML
     conditions_html = ""
     for condition in conditions:
-        condition_card = f"""
+        conditions_html += f"""
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body text-center">
@@ -342,28 +340,16 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
             </div>
         </div>
         """
-        conditions_html += condition_card
 
-    evaluation_html = f"""
-    <div class="card mt-4">
-        <div class="card-body text-center">
-            <h3>Avaliação Geral</h3>
-            <div class="display-4">{evaluation['status']}</div>
-            <p class="lead">{evaluation['description']}</p>
-            <div class="progress">
-                <div class="progress-bar" role="progressbar" style="width: {evaluation['score']}%">
-                    {evaluation['score']}/100
-                </div>
-            </div>
-        </div>
-    </div>
-    """
-
-    return template.replace("{% for condition in conditions %}", conditions_html)\
-                  .replace("{% endfor %}", "")\
-                  .replace("{{ evaluation.status }}", evaluation['status'])\
-                  .replace("{{ evaluation.description }}", evaluation['description'])\
-                  .replace("{{ evaluation.score }}", str(evaluation['score']))
+    # Format the final HTML
+    return html_template.format(
+        cidade=CONFIG['CIDADE'],
+        data_hora=data_hora.strftime('%d/%m/%Y %H:%M'),
+        conditions_html=conditions_html,
+        evaluation_status=avaliacao,
+        evaluation_description=descricao,
+        evaluation_score=pontuacao
+    )
 
 
 def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase, 
