@@ -31,7 +31,7 @@ CONFIG = {
 }
 
 def get_fase_lua(lat, lon, data):
-    """Retorna a fase lunar atual usando a API do U.S. Naval Observatory"""
+    """Retorna a fase lunar atual e próximas fases usando a API do U.S. Naval Observatory"""
     try:
         # Data atual em formato YYYY-MM-DD para a API USNO
         data_formatada = data.strftime('%Y-%m-%d')
@@ -48,6 +48,18 @@ def get_fase_lua(lat, lon, data):
                 fases = sorted(dados['phasedata'], 
                              key=lambda x: abs(datetime.strptime(f"{x['year']}-{x['month']}-{x['day']}", '%Y-%m-%d') - data))
 
+                # Traduzir nomes das fases para português
+                fase_map = {
+                    'New Moon': 'Lua Nova',
+                    'First Quarter': 'Quarto Crescente',
+                    'Full Moon': 'Lua Cheia',
+                    'Last Quarter': 'Quarto Minguante'
+                }
+
+                # Atualizar nomes das fases para português
+                for fase in fases:
+                    fase['phase'] = fase_map.get(fase['phase'], fase['phase'])
+
                 fase_proxima = fases[0]
                 data_fase = datetime.strptime(f"{fase_proxima['year']}-{fase_proxima['month']}-{fase_proxima['day']}", '%Y-%m-%d')
 
@@ -55,27 +67,27 @@ def get_fase_lua(lat, lon, data):
                 dif_dias = abs((data - data_fase).days)
 
                 # Converter fase para valor numérico
-                fase_map = {
-                    'New Moon': 0,
-                    'First Quarter': 25,
-                    'Full Moon': 50,
-                    'Last Quarter': 75
+                fase_valor_map = {
+                    'Lua Nova': 0,
+                    'Quarto Crescente': 25,
+                    'Lua Cheia': 50,
+                    'Quarto Minguante': 75
                 }
 
-                fase_base = fase_map.get(fase_proxima['phase'], 0)
+                fase_base = fase_valor_map.get(fase_proxima['phase'], 0)
 
                 # Ajustar fase baseado na diferença de dias
                 if dif_dias > 0:
                     if fase_base == 0:  # Lua Nova
-                        return min(dif_dias * 3.5, 25)  # Crescente
+                        return min(dif_dias * 3.5, 25), fase_proxima, fases[1:]  # Crescente
                     elif fase_base == 25:  # Quarto Crescente
-                        return min(25 + dif_dias * 3.5, 50)  # Crescente Gibosa
+                        return min(25 + dif_dias * 3.5, 50), fase_proxima, fases[1:]  # Crescente Gibosa
                     elif fase_base == 50:  # Lua Cheia
-                        return min(50 + dif_dias * 3.5, 75)  # Minguante Gibosa
+                        return min(50 + dif_dias * 3.5, 75), fase_proxima, fases[1:]  # Minguante Gibosa
                     else:  # Quarto Minguante
-                        return min(75 + dif_dias * 3.5, 100)  # Minguante
+                        return min(75 + dif_dias * 3.5, 100), fase_proxima, fases[1:]  # Minguante
 
-                return fase_base
+                return fase_base, fase_proxima, fases[1:]
     except Exception as e:
         print(f"Erro ao consultar fase da lua: {e}")
 
@@ -87,46 +99,68 @@ def get_fase_lua(lat, lon, data):
             dados = response.json()
             if dados and dados.get('daily'):
                 fase = dados['daily'][0]['moon_phase']
-                return fase * 100  # Converter para escala 0-100
+                return fase * 100, None, []  # Converter para escala 0-100
     except Exception as e:
         print(f"Erro no fallback OpenWeatherMap: {e}")
 
     # Se tudo falhar, retornar um valor simulado
-    return random.randint(0, 100)
+    return random.randint(0, 100), None, []
 
-def get_vento(lat, lon):
-    """Simula a velocidade do vento para demonstração"""
-    return 12.5  # Simulando vento moderado
+def formatar_data_fase(fase):
+    """Formata a data da fase lunar no formato desejado"""
+    data = datetime.strptime(f"{fase['year']}-{fase['month']}-{fase['day']}", '%Y-%m-%d')
+    
+    # Mapeamento de meses para português
+    meses = {
+        'JAN': 'JAN',
+        'FEB': 'FEV',
+        'MAR': 'MAR',
+        'APR': 'ABR',
+        'MAY': 'MAI',
+        'JUN': 'JUN',
+        'JUL': 'JUL',
+        'AUG': 'AGO',
+        'SEP': 'SET',
+        'OCT': 'OUT',
+        'NOV': 'NOV',
+        'DEC': 'DEZ'
+    }
+    
+    # Mapeamento de meses para nomes completos em português
+    meses_completos = {
+        'JAN': 'janeiro',
+        'FEB': 'fevereiro',
+        'MAR': 'março',
+        'APR': 'abril',
+        'MAY': 'maio',
+        'JUN': 'junho',
+        'JUL': 'julho',
+        'AUG': 'agosto',
+        'SEP': 'setembro',
+        'OCT': 'outubro',
+        'NOV': 'novembro',
+        'DEC': 'dezembro'
+    }
+    
+    mes_abreviado = data.strftime('%b').upper()
+    mes_completo = meses_completos.get(mes_abreviado, mes_abreviado)
+    
+    return {
+        'nome': fase['phase'],
+        'dia': data.strftime('%d'),
+        'mes': meses.get(mes_abreviado, mes_abreviado),
+        'data_completa': data.strftime(f'%d de {mes_completo} de %Y às %H:%M'),
+        'dias_faltantes': (data - datetime.now()).days
+    }
 
-def get_precipitacao(lat, lon):
-    """Simula a precipitação para demonstração"""
-    return 2.5  # Simulando chuva leve
-
-def get_mare(lat, lon, data):
-    """Simula a altura da maré para demonstração"""
-    return 1.2  # Simulando maré média
-
-def get_estacao():
-    """Determina a estação do ano baseado na data atual"""
-    hoje = datetime.now()
-    mes = hoje.month
-
-    if 12 <= mes <= 2:
-        return "Verão"
-    elif 3 <= mes <= 5:
-        return "Outono"
-    elif 6 <= mes <= 8:
-        return "Inverno"
-    else:
-        return "Primavera"
-
-def get_fase_lua_descricao(fase_lunar):
+def get_fase_lua_descricao(fase_lunar, fase_atual, proximas_fases):
     """Retorna descrição detalhada da fase lunar com base na visibilidade subaquática."""
     if fase_lunar < 5:
         return "Lua Nova", (
-            "Fase lunar crítica. Visibilidade subaquática comprometida devido à maior variação da maré de sizígia, "
-            "que intensifica a resuspensão de sedimentos e aumenta a turbidez. A amplitude máxima das marés "
-            "nesta fase pode exceder 2m, gerando correntes de até 2.5 nós. (Yang et al., 2020; Kumar et al., 2019)"
+            "Fase lunar CRÍTICA. Visibilidade subaquática SEVERAMENTE comprometida devido à maior variação da maré de sizígia, "
+            "que intensifica significativamente a resuspensão de sedimentos e aumenta drasticamente a turbidez. A amplitude máxima das marés "
+            "nesta fase pode exceder 2.5m, gerando correntes de até 3.0 nós. Condições extremamente desfavoráveis para mergulho. "
+            "(Yang et al., 2020; Kumar et al., 2019)"
         )
     elif fase_lunar < 25:
         return "Lua Crescente", (
@@ -158,6 +192,32 @@ def get_fase_lua_descricao(fase_lunar):
             "Dados indicam turbidez moderada e correntes de 1.0-1.5 nós. Visibilidade subaquática "
             "ainda mantém 40% melhor que em lua nova. (Thompson, 2021)"
         )
+
+def get_vento(lat, lon):
+    """Simula a velocidade do vento para demonstração"""
+    return 12.5  # Simulando vento moderado
+
+def get_precipitacao(lat, lon):
+    """Simula a precipitação para demonstração"""
+    return 2.5  # Simulando chuva leve
+
+def get_mare(lat, lon, data):
+    """Simula a altura da maré para demonstração"""
+    return 1.2  # Simulando maré média
+
+def get_estacao():
+    """Determina a estação do ano baseado na data atual"""
+    hoje = datetime.now()
+    mes = hoje.month
+
+    if 12 <= mes <= 2:
+        return "Verão"
+    elif 3 <= mes <= 5:
+        return "Outono"
+    elif 6 <= mes <= 8:
+        return "Inverno"
+    else:
+        return "Primavera"
 
 def get_vento_descricao(vento):
     """Retorna descrição detalhada do impacto do vento no mergulho livre."""
@@ -239,8 +299,30 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
                         precipitacao, descricao_precip, impacto_precip,
                         mare, descricao_mare, impacto_mare,
                         velocidade_corrente, descricao_corrente, impacto_corrente,
-                        estacao, avaliacao, pontuacao, descricao, recomendacao):
+                        estacao, avaliacao, pontuacao, descricao, recomendacao,
+                        fase_atual, proximas_fases):
     """Gera o conteúdo do email em formato texto simples como fallback"""
+    # Formatar informações da lua
+    fase_atual_info = formatar_data_fase(fase_atual) if fase_atual else None
+    proximas_fases_info = [formatar_data_fase(fase) for fase in proximas_fases]
+
+    # Gerar texto das fases da lua
+    fases_texto = ""
+    if fase_atual_info:
+        fases_texto += f"""
+🌙 Fase Lunar Atual: {fase_atual_info['nome']}
+   Data: {fase_atual_info['data_completa']}
+   {descricao_fase}
+"""
+
+    if proximas_fases_info:
+        fases_texto += "\n📅 Próximas Fases Lunares:\n"
+        for fase in proximas_fases_info:
+            fases_texto += f"""
+   • {fase['nome']} em {fase['dias_faltantes']} dias
+     Data: {fase['data_completa']}
+"""
+
     return f"""
 {'='*60}
 🌊 CONDICIONÔMETRO DE MERGULHO - {CONFIG['CIDADE']}/{CONFIG['ESTADO']} 🌊
@@ -248,9 +330,7 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
 
 📅 Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}
 
-🌙 Fase da Lua: {nome_fase}
-   {descricao_fase}
-
+{fases_texto}
 💨 Vento: {descricao_vento} ({vento:.1f} km/h)
    {impacto_vento}
 
@@ -311,10 +391,26 @@ def main():
         print(f"📅 Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}\n")
 
         # Consultar condições
-        fase_lunar = get_fase_lua(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
-        nome_fase, descricao_fase = get_fase_lua_descricao(fase_lunar)
-        print(f"🌙 Fase da Lua: {nome_fase}")
-        print(f"   {descricao_fase}\n")
+        fase_lunar, fase_atual, proximas_fases = get_fase_lua(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
+        nome_fase, descricao_fase = get_fase_lua_descricao(fase_lunar, fase_atual, proximas_fases)
+        
+        # Formatar e exibir informações da lua
+        fase_atual_info = formatar_data_fase(fase_atual) if fase_atual else None
+        proximas_fases_info = [formatar_data_fase(fase) for fase in proximas_fases]
+        
+        print("🌙 Fase Lunar Atual:")
+        if fase_atual_info:
+            print(f"   {fase_atual_info['nome']}")
+            print(f"   Data: {fase_atual_info['data_completa']}")
+            print(f"   {descricao_fase}")
+        print()
+
+        if proximas_fases_info:
+            print("📅 Próximas Fases Lunares:")
+            for fase in proximas_fases_info:
+                print(f"\n   • {fase['nome']} em {fase['dias_faltantes']} dias")
+                print(f"     Data: {fase['data_completa']}")
+        print()
 
         vento = get_vento(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
         descricao_vento, impacto_vento = get_vento_descricao(vento)
@@ -372,32 +468,49 @@ def main():
         else:
             ajuste_correntes = -10  # Penalidade maior para correntes muito fortes
 
+        # Ajuste de pontuação baseado na fase lunar
+        ajuste_lua = 0
+        if fase_lunar < 5:  # Lua Nova
+            ajuste_lua = -15  # Penalidade maior para lua nova
+        elif fase_lunar < 25:  # Lua Crescente
+            ajuste_lua = 5  # Bônus para lua crescente
+        elif fase_lunar < 45:  # Quarto Crescente
+            ajuste_lua = 10  # Bônus maior para quarto crescente
+        elif fase_lunar < 55:  # Lua Cheia
+            ajuste_lua = -10  # Penalidade para lua cheia
+        elif fase_lunar < 75:  # Quarto Minguante
+            ajuste_lua = 5  # Bônus para quarto minguante
+        else:  # Lua Minguante
+            ajuste_lua = 0  # Sem ajuste para lua minguante
+
         if condicoes_ideais:
             avaliacao = "🌟 ÓTIMO"
-            pontuacao = min(95 + ajuste_estacao + ajuste_correntes, 100)  # Máximo de 100
+            pontuacao = min(95 + ajuste_estacao + ajuste_correntes + ajuste_lua, 100)  # Máximo de 100
             descricao = "Condições climáticas ideais para mergulho."
             recomendacao = "Condições climáticas estáveis e favoráveis para prática de mergulho."
         elif condicoes_boas:
             avaliacao = "👍 BOM"
-            pontuacao = min(70 + ajuste_estacao + ajuste_correntes, 95)  # Máximo de 95
+            pontuacao = min(70 + ajuste_estacao + ajuste_correntes + ajuste_lua, 95)  # Máximo de 95
             descricao = "Condições climáticas favoráveis para mergulho."
             recomendacao = "Condições climáticas aceitáveis para prática de mergulho."
         elif condicoes_regulares:
             avaliacao = "⚠️ REGULAR"
-            pontuacao = min(50 + ajuste_estacao + ajuste_correntes, 70)  # Máximo de 70
+            pontuacao = min(50 + ajuste_estacao + ajuste_correntes + ajuste_lua, 70)  # Máximo de 70
             descricao = "Condições climáticas moderadas para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se cautela."
         else:
             avaliacao = "❌ NÃO RECOMENDADO"
-            pontuacao = max(27 + ajuste_estacao + ajuste_correntes, 27)  # Mínimo de 27
+            pontuacao = max(27 + ajuste_estacao + ajuste_correntes + ajuste_lua, 27)  # Mínimo de 27
             descricao = "Condições climáticas desfavoráveis para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se adiar a prática de mergulho."
 
         # Adiciona informação sobre os ajustes na descrição
-        if ajuste_estacao != 0 or ajuste_correntes != 0:
+        if ajuste_estacao != 0 or ajuste_correntes != 0 or ajuste_lua != 0:
             descricao += f" {'(Bônus de +' + str(ajuste_estacao) + ' pontos pela estação)' if ajuste_estacao > 0 else '(Penalidade de ' + str(abs(ajuste_estacao)) + ' pontos pela estação)'}"
             if ajuste_correntes != 0:
                 descricao += f" {'(Bônus de +' + str(ajuste_correntes) + ' pontos pelas correntes)' if ajuste_correntes > 0 else '(Penalidade de ' + str(abs(ajuste_correntes)) + ' pontos pelas correntes)'}"
+            if ajuste_lua != 0:
+                descricao += f" {'(Bônus de +' + str(ajuste_lua) + ' pontos pela fase lunar)' if ajuste_lua > 0 else '(Penalidade de ' + str(abs(ajuste_lua)) + ' pontos pela fase lunar)'}"
 
         print("="*60)
         print(f"📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)")
@@ -412,7 +525,8 @@ def main():
             precipitacao, descricao_precip, impacto_precip,
             mare, descricao_mare, impacto_mare,
             velocidade_corrente, descricao_corrente, impacto_corrente,
-            estacao, avaliacao, pontuacao, descricao, recomendacao
+            estacao, avaliacao, pontuacao, descricao, recomendacao,
+            fase_atual, proximas_fases
         )
 
         if enviar_email(conteudo_texto):
