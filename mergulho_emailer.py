@@ -236,13 +236,77 @@ def get_correntes_descricao(velocidade, direcao):
     else:
         return "Muito Forte", "Condições críticas. Correntes muito fortes tornam o mergulho perigoso, com alto risco de fadiga e consumo excessivo de ar. Não recomendado para mergulho."
 
+def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
+                       vento, descricao_vento, impacto_vento,
+                       precipitacao, descricao_precip, impacto_precip,
+                       mare, descricao_mare, impacto_mare,
+                       velocidade_corrente, descricao_corrente, impacto_corrente,
+                       estacao, avaliacao, pontuacao, descricao, recomendacao):
+    """Gera o conteúdo do email em formato HTML usando o template Flask"""
+    from flask import Flask, render_template
+    app = Flask(__name__)
+    
+    with app.app_context():
+        conditions = [
+            {
+                "icon": "🌙",
+                "title": "Fase da Lua",
+                "description": descricao_fase,
+                "status": nome_fase,
+                "alert_type": "info"
+            },
+            {
+                "icon": "💨",
+                "title": "Vento",
+                "description": impacto_vento,
+                "status": f"{descricao_vento} ({vento:.1f} km/h)",
+                "alert_type": "primary"
+            },
+            {
+                "icon": "🌧️",
+                "title": "Precipitação",
+                "description": impacto_precip,
+                "status": f"{descricao_precip} ({precipitacao:.1f} mm)",
+                "alert_type": "secondary"
+            },
+            {
+                "icon": "🌊",
+                "title": "Maré",
+                "description": impacto_mare,
+                "status": f"{descricao_mare} ({mare:.1f} m)",
+                "alert_type": "info"
+            },
+            {
+                "icon": "🌊",
+                "title": "Correntes",
+                "description": impacto_corrente,
+                "status": f"{descricao_corrente} ({velocidade_corrente:.1f} m/s)",
+                "alert_type": "warning"
+            },
+            {
+                "icon": "🌞",
+                "title": "Estação",
+                "description": "Condições da estação atual",
+                "status": estacao,
+                "alert_type": "warning"
+            }
+        ]
+        
+        evaluation = {
+            "status": avaliacao,
+            "score": pontuacao,
+            "description": descricao
+        }
+        
+        return render_template('index.html', conditions=conditions, evaluation=evaluation)
+
 def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase, 
                         vento, descricao_vento, impacto_vento,
                         precipitacao, descricao_precip, impacto_precip,
                         mare, descricao_mare, impacto_mare,
                         velocidade_corrente, descricao_corrente, impacto_corrente,
                         estacao, avaliacao, pontuacao, descricao, recomendacao):
-    """Gera o conteúdo do email em formato texto simples"""
+    """Gera o conteúdo do email em formato texto simples como fallback"""
     return f"""
 {'='*60}
 🌊 CONDICIONÔMETRO DE MERGULHO - {CONFIG['CIDADE']}/{CONFIG['ESTADO']} 🌊
@@ -283,16 +347,17 @@ Recomendação: {recomendacao}
 {'='*60}
 """
 
-def enviar_email(conteudo):
-    """Envia o email com o relatório"""
+def enviar_email(conteudo_html, conteudo_texto):
+    """Envia o email com o relatório em formato HTML e texto"""
     try:
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('alternative')
         msg["From"] = CONFIG["EMAIL_USER"]
         msg["To"] = ", ".join(CONFIG["EMAIL_DESTINATARIOS"])
         msg["Subject"] = f"Relatório de Condições de Mergulho - {CONFIG['CIDADE']} - {datetime.now().strftime('%d/%m/%Y')}"
         
-        # Adiciona o conteúdo como texto simples
-        msg.attach(MIMEText(conteudo, "plain"))
+        # Adiciona ambas versões do conteúdo
+        msg.attach(MIMEText(conteudo_texto, "plain"))
+        msg.attach(MIMEText(conteudo_html, "html"))
         
         server = smtplib.SMTP(CONFIG["SMTP_SERVER"], CONFIG["SMTP_PORT"])
         server.starttls()
@@ -411,7 +476,7 @@ def main():
         print("="*60 + "\n")
         
         # Gerar e enviar email
-        conteudo = gerar_relatorio_texto(
+        conteudo_html = gerar_relatorio_html(
             data_hora, fase_lunar, nome_fase, descricao_fase,
             vento, descricao_vento, impacto_vento,
             precipitacao, descricao_precip, impacto_precip,
@@ -420,7 +485,16 @@ def main():
             estacao, avaliacao, pontuacao, descricao, recomendacao
         )
         
-        if enviar_email(conteudo):
+        conteudo_texto = gerar_relatorio_texto(
+            data_hora, fase_lunar, nome_fase, descricao_fase,
+            vento, descricao_vento, impacto_vento,
+            precipitacao, descricao_precip, impacto_precip,
+            mare, descricao_mare, impacto_mare,
+            velocidade_corrente, descricao_corrente, impacto_corrente,
+            estacao, avaliacao, pontuacao, descricao, recomendacao
+        )
+        
+        if enviar_email(conteudo_html, conteudo_texto):
             print("✅ Relatório enviado por email com sucesso!")
         else:
             print("❌ Falha ao enviar o relatório por email.")
