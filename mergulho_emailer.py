@@ -37,25 +37,25 @@ def get_fase_lua(lat, lon, data):
     try:
         # Data atual em formato YYYY-MM-DD para a API USNO
         data_formatada = data.strftime('%Y-%m-%d')
-        
+
         # Usar a API do U.S. Naval Observatory (USNO)
         url = f"https://aa.usno.navy.mil/api/moon/phases/date?date={data_formatada}&nump=4"
-        
+
         response = requests.get(url)
         if response.ok:
             dados = response.json()
-            
+
             if dados and dados.get('phasedata'):
                 # Ordenar fases por proximidade da data atual
                 fases = sorted(dados['phasedata'], 
                              key=lambda x: abs(datetime.strptime(f"{x['year']}-{x['month']}-{x['day']}", '%Y-%m-%d') - data))
-                
+
                 fase_proxima = fases[0]
                 data_fase = datetime.strptime(f"{fase_proxima['year']}-{fase_proxima['month']}-{fase_proxima['day']}", '%Y-%m-%d')
-                
+
                 # Calcular diferença em dias
                 dif_dias = abs((data - data_fase).days)
-                
+
                 # Converter fase para valor numérico
                 fase_map = {
                     'New Moon': 0,
@@ -63,9 +63,9 @@ def get_fase_lua(lat, lon, data):
                     'Full Moon': 50,
                     'Last Quarter': 75
                 }
-                
+
                 fase_base = fase_map.get(fase_proxima['phase'], 0)
-                
+
                 # Ajustar fase baseado na diferença de dias
                 if dif_dias > 0:
                     if fase_base == 0:  # Lua Nova
@@ -76,11 +76,11 @@ def get_fase_lua(lat, lon, data):
                         return min(50 + dif_dias * 3.5, 75)  # Minguante Gibosa
                     else:  # Quarto Minguante
                         return min(75 + dif_dias * 3.5, 100)  # Minguante
-                
+
                 return fase_base
     except Exception as e:
         print(f"Erro ao consultar fase da lua: {e}")
-    
+
     # Fallback: usar OpenWeatherMap
     try:
         url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,alerts&appid={CONFIG['OPENWEATHER_API_KEY']}"
@@ -92,7 +92,7 @@ def get_fase_lua(lat, lon, data):
                 return fase * 100  # Converter para escala 0-100
     except Exception as e:
         print(f"Erro no fallback OpenWeatherMap: {e}")
-    
+
     # Se tudo falhar, retornar um valor simulado
     return random.randint(0, 100)
 
@@ -112,7 +112,7 @@ def get_estacao():
     """Determina a estação do ano baseado na data atual"""
     hoje = datetime.now()
     mes = hoje.month
-    
+
     if 12 <= mes <= 2:
         return "Verão"
     elif 3 <= mes <= 5:
@@ -196,10 +196,10 @@ def get_correntes(lat, lon):
     try:
         # Data atual em formato ISO
         data_atual = datetime.now().isoformat()
-        
+
         # URL da API StormGlass para correntes
         url = f"https://api.stormglass.io/v2/tide/extremes/point"
-        
+
         # Parâmetros da requisição
         params = {
             "lat": lat,
@@ -208,7 +208,7 @@ def get_correntes(lat, lon):
             "end": data_atual,
             "key": CONFIG["STORMGLASS_API_KEY"]
         }
-        
+
         response = requests.get(url, params=params)
         if response.ok:
             dados = response.json()
@@ -217,11 +217,11 @@ def get_correntes(lat, lon):
                 corrente = dados['data'][0]
                 velocidade = corrente.get('speed', 0)
                 direcao = corrente.get('type', 'unknown')
-                
+
                 return velocidade, direcao
     except Exception as e:
         print(f"Erro ao consultar correntes: {e}")
-    
+
     # Fallback: retorna valores simulados em caso de erro
     return 0.5, "unknown"
 
@@ -242,63 +242,128 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
                        mare, descricao_mare, impacto_mare,
                        velocidade_corrente, descricao_corrente, impacto_corrente,
                        estacao, avaliacao, pontuacao, descricao, recomendacao):
-    """Gera o conteúdo do email em formato HTML usando o template Flask"""
-    from flask import Flask, render_template
-    app = Flask(__name__)
-    
-    with app.app_context():
-        conditions = [
-            {
-                "icon": "🌙",
-                "title": "Fase da Lua",
-                "description": descricao_fase,
-                "status": nome_fase,
-                "alert_type": "info"
-            },
-            {
-                "icon": "💨",
-                "title": "Vento",
-                "description": impacto_vento,
-                "status": f"{descricao_vento} ({vento:.1f} km/h)",
-                "alert_type": "primary"
-            },
-            {
-                "icon": "🌧️",
-                "title": "Precipitação",
-                "description": impacto_precip,
-                "status": f"{descricao_precip} ({precipitacao:.1f} mm)",
-                "alert_type": "secondary"
-            },
-            {
-                "icon": "🌊",
-                "title": "Maré",
-                "description": impacto_mare,
-                "status": f"{descricao_mare} ({mare:.1f} m)",
-                "alert_type": "info"
-            },
-            {
-                "icon": "🌊",
-                "title": "Correntes",
-                "description": impacto_corrente,
-                "status": f"{descricao_corrente} ({velocidade_corrente:.1f} m/s)",
-                "alert_type": "warning"
-            },
-            {
-                "icon": "🌞",
-                "title": "Estação",
-                "description": "Condições da estação atual",
-                "status": estacao,
-                "alert_type": "warning"
-            }
-        ]
-        
-        evaluation = {
-            "status": avaliacao,
-            "score": pontuacao,
-            "description": descricao
+    """Gera o conteúdo do email em formato HTML"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Relatório de Condições de Mergulho</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1>Relatório de Condições de Mergulho - {}</h1>
+            <p>Data e Hora: {}</p>
+            <div class="row">
+                {% for condition in conditions %}
+                {% endfor %}
+            </div>
+            {{ evaluation.status }}
+            {{ evaluation.description }}
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: {{ evaluation.score }}%;">
+                    {{ evaluation.score }}/100
+                </div>
+            </div>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </body>
+    </html>
+    """.format(CONFIG['CIDADE'], data_hora.strftime('%d/%m/%Y %H:%M'))
+
+    conditions = [
+        {
+            "icon": "🌙",
+            "title": "Fase da Lua",
+            "description": descricao_fase,
+            "status": nome_fase,
+            "alert_type": "info"
+        },
+        {
+            "icon": "💨",
+            "title": "Vento",
+            "description": impacto_vento,
+            "status": f"{descricao_vento} ({vento:.1f} km/h)",
+            "alert_type": "primary"
+        },
+        {
+            "icon": "🌧️",
+            "title": "Precipitação",
+            "description": impacto_precip,
+            "status": f"{descricao_precip} ({precipitacao:.1f} mm)",
+            "alert_type": "secondary"
+        },
+        {
+            "icon": "🌊",
+            "title": "Maré",
+            "description": impacto_mare,
+            "status": f"{descricao_mare} ({mare:.1f} m)",
+            "alert_type": "info"
+        },
+        {
+            "icon": "🌊",
+            "title": "Correntes",
+            "description": impacto_corrente,
+            "status": f"{descricao_corrente} ({velocidade_corrente:.1f} m/s)",
+            "alert_type": "warning"
+        },
+        {
+            "icon": "🌞",
+            "title": "Estação",
+            "description": "Condições da estação atual",
+            "status": estacao,
+            "alert_type": "warning"
         }
-        
-        return render_template('index.html', conditions=conditions, evaluation=evaluation)
+    ]
+
+    evaluation = {
+        "status": avaliacao,
+        "score": pontuacao,
+        "description": descricao
+    }
+
+    # Substituir variáveis no template
+    conditions_html = ""
+    for condition in conditions:
+        condition_card = f"""
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="condition-icon">{condition['icon']}</div>
+                    <h5 class="card-title">{condition['title']}</h5>
+                    <p class="card-text">{condition['description']}</p>
+                    <div class="alert alert-{condition['alert_type']}">
+                        {condition['status']}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        conditions_html += condition_card
+
+    evaluation_html = f"""
+    <div class="card mt-4">
+        <div class="card-body text-center">
+            <h3>Avaliação Geral</h3>
+            <div class="display-4">{evaluation['status']}</div>
+            <p class="lead">{evaluation['description']}</p>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: {evaluation['score']}%">
+                    {evaluation['score']}/100
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+    return template.replace("{% for condition in conditions %}", conditions_html)\
+                  .replace("{% endfor %}", "")\
+                  .replace("{{ evaluation.status }}", evaluation['status'])\
+                  .replace("{{ evaluation.description }}", evaluation['description'])\
+                  .replace("{{ evaluation.score }}", str(evaluation['score']))
+
 
 def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase, 
                         vento, descricao_vento, impacto_vento,
@@ -354,11 +419,11 @@ def enviar_email(conteudo_html, conteudo_texto):
         msg["From"] = CONFIG["EMAIL_USER"]
         msg["To"] = ", ".join(CONFIG["EMAIL_DESTINATARIOS"])
         msg["Subject"] = f"Relatório de Condições de Mergulho - {CONFIG['CIDADE']} - {datetime.now().strftime('%d/%m/%Y')}"
-        
+
         # Adiciona ambas versões do conteúdo
         msg.attach(MIMEText(conteudo_texto, "plain"))
         msg.attach(MIMEText(conteudo_html, "html"))
-        
+
         server = smtplib.SMTP(CONFIG["SMTP_SERVER"], CONFIG["SMTP_PORT"])
         server.starttls()
         server.login(CONFIG["EMAIL_USER"], CONFIG["EMAIL_PASS"])
@@ -375,51 +440,51 @@ def main():
         print("\n" + "="*60)
         print("🌊 CONDICIONÔMETRO DE MERGULHO - SANTOS/SP 🌊")
         print("="*60 + "\n")
-        
+
         # Obter data/hora atual
         data_hora = datetime.now()
         print(f"📅 Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}\n")
-        
+
         # Consultar condições
         fase_lunar = get_fase_lua(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
         nome_fase, descricao_fase = get_fase_lua_descricao(fase_lunar)
         print(f"🌙 Fase da Lua: {nome_fase}")
         print(f"   {descricao_fase}\n")
-        
+
         vento = get_vento(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
         descricao_vento, impacto_vento = get_vento_descricao(vento)
         print(f"💨 Vento: {descricao_vento} ({vento:.1f} km/h)")
         print(f"   {impacto_vento}\n")
-        
+
         precipitacao = get_precipitacao(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
         descricao_precip, impacto_precip = get_precipitacao_descricao(precipitacao)
         print(f"🌧️ Precipitação: {descricao_precip} ({precipitacao:.1f} mm)")
         print(f"   {impacto_precip}\n")
-        
+
         mare = get_mare(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
         descricao_mare, impacto_mare = get_mare_descricao(mare)
         print(f"🌊 Maré: {descricao_mare} ({mare:.1f} m)")
         print(f"   {impacto_mare}\n")
-        
+
         velocidade_corrente, direcao_corrente = get_correntes(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
         descricao_corrente, impacto_corrente = get_correntes_descricao(velocidade_corrente, direcao_corrente)
         print(f"🌊 Correntes: {descricao_corrente} ({velocidade_corrente:.1f} m/s)")
         print(f"   {impacto_corrente}\n")
-        
+
         estacao = get_estacao()
         print(f"🌞 Estação: {estacao}")
         print(f"   {'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}\n")
-        
+
         # Avaliar condições gerais com critérios mais rigorosos
         # Condições ideais: vento < 10km/h, precipitação < 2mm, maré < 1.2m, corrente < 0.3m/s
         condicoes_ideais = (vento < 10 and precipitacao < 2 and mare < 1.2 and velocidade_corrente < 0.3)
-        
+
         # Condições boas: vento < 15km/h, precipitação < 5mm, maré < 1.5m, corrente < 0.7m/s
         condicoes_boas = (vento < 15 and precipitacao < 5 and mare < 1.5 and velocidade_corrente < 0.7)
-        
+
         # Condições regulares: vento < 20km/h, precipitação < 10mm, maré < 1.8m, corrente < 1.2m/s
         condicoes_regulares = (vento < 20 and precipitacao < 10 and mare < 1.8 and velocidade_corrente < 1.2)
-        
+
         # Ajuste de pontuação baseado na estação
         ajuste_estacao = 0
         if estacao == "Verão":
@@ -430,7 +495,7 @@ def main():
             ajuste_estacao = -5  # Penalidade para inverno
         else:  # Outono
             ajuste_estacao = 0
-        
+
         # Ajuste de pontuação baseado nas correntes
         ajuste_correntes = 0
         if velocidade_corrente < 0.3:
@@ -441,7 +506,7 @@ def main():
             ajuste_correntes = -5  # Penalidade para correntes fortes
         else:
             ajuste_correntes = -10  # Penalidade maior para correntes muito fortes
-        
+
         if condicoes_ideais:
             avaliacao = "🌟 ÓTIMO"
             pontuacao = min(95 + ajuste_estacao + ajuste_correntes, 100)  # Máximo de 100
@@ -462,19 +527,19 @@ def main():
             pontuacao = max(27 + ajuste_estacao + ajuste_correntes, 27)  # Mínimo de 27
             descricao = "Condições climáticas desfavoráveis para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se adiar a prática de mergulho."
-        
+
         # Adiciona informação sobre os ajustes na descrição
         if ajuste_estacao != 0 or ajuste_correntes != 0:
             descricao += f" {'(Bônus de +' + str(ajuste_estacao) + ' pontos pela estação)' if ajuste_estacao > 0 else '(Penalidade de ' + str(abs(ajuste_estacao)) + ' pontos pela estação)'}"
             if ajuste_correntes != 0:
                 descricao += f" {'(Bônus de +' + str(ajuste_correntes) + ' pontos pelas correntes)' if ajuste_correntes > 0 else '(Penalidade de ' + str(abs(ajuste_correntes)) + ' pontos pelas correntes)'}"
-        
+
         print("="*60)
         print(f"📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)")
         print(f"💡 {descricao}")
         print(f"🎯 {recomendacao}")
         print("="*60 + "\n")
-        
+
         # Gerar e enviar email
         conteudo_html = gerar_relatorio_html(
             data_hora, fase_lunar, nome_fase, descricao_fase,
@@ -484,7 +549,7 @@ def main():
             velocidade_corrente, descricao_corrente, impacto_corrente,
             estacao, avaliacao, pontuacao, descricao, recomendacao
         )
-        
+
         conteudo_texto = gerar_relatorio_texto(
             data_hora, fase_lunar, nome_fase, descricao_fase,
             vento, descricao_vento, impacto_vento,
@@ -493,17 +558,17 @@ def main():
             velocidade_corrente, descricao_corrente, impacto_corrente,
             estacao, avaliacao, pontuacao, descricao, recomendacao
         )
-        
+
         if enviar_email(conteudo_html, conteudo_texto):
             print("✅ Relatório enviado por email com sucesso!")
         else:
             print("❌ Falha ao enviar o relatório por email.")
-        
+
         return 0
-        
+
     except Exception as e:
         print(f"\n❌ Erro durante a execução: {e}")
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())
