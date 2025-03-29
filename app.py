@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template
 from mergulho_check_github import (
     get_fase_lua, get_vento, get_precipitacao, get_mare,
@@ -13,19 +12,19 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     data_hora = datetime.now()
-    
+
     # Coletar dados
     fase_lunar = get_fase_lua(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
     vento = get_vento(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
     precipitacao = get_precipitacao(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
     mare = get_mare(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
-    
+
     # Processar descrições
     nome_fase, desc_fase = get_fase_lua_descricao(fase_lunar)
     desc_vento, imp_vento = get_vento_descricao(vento)
     desc_precip, imp_precip = get_precipitacao_descricao(precipitacao)
     desc_mare, imp_mare = get_mare_descricao(mare)
-    
+
     # Preparar dados para template
     conditions = [
         {
@@ -64,7 +63,7 @@ def home():
             "alert_type": "warning"
         }
     ]
-    
+
     # Calcular avaliação
     condicoes_ideais = (vento < 15 and precipitacao < 5 and mare < 1.5)
     if condicoes_ideais:
@@ -77,21 +76,21 @@ def home():
         evaluation = {
             "status": "👍 BOM",
             "score": 70,
-            "description": "Você pode mergulhar com relativa tranquilidade."
+            "description": "Condições climáticas favoráveis para mergulho. Você pode mergulhar com relativa tranquilidade."
         }
     elif vento < 25 and precipitacao < 15 and mare < 2.0:
         evaluation = {
             "status": "⚠️ REGULAR",
             "score": 50,
-            "description": "Mergulhe com cautela e atenção às mudanças nas condições."
+            "description": "Condições climáticas moderadas para mergulho. Mergulhe com cautela e atenção às mudanças nas condições."
         }
     else:
         evaluation = {
             "status": "❌ NÃO RECOMENDADO",
             "score": 27,
-            "description": "Não recomendado para mergulho hoje. Considere adiar."
+            "description": "Condições climáticas desfavoráveis para mergulho. Não recomendado para mergulho hoje. Considere adiar."
         }
-    
+
     try:
         return render_template('index.html', 
                              conditions=conditions,
