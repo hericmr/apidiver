@@ -15,6 +15,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import random
+from jinja2 import Template, FileSystemLoader, Environment
 
 # Configurações
 CONFIG = {
@@ -243,7 +244,7 @@ def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
                        velocidade_corrente, descricao_corrente, impacto_corrente,
                        estacao, avaliacao, pontuacao, descricao, recomendacao):
     """Gera o conteúdo do email em formato HTML"""
-    template = """
+    html_template = """
     <!DOCTYPE html>
     <html>
     <head>
