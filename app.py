@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+
 from mergulho_check_github import (
     get_fase_lua, get_vento, get_precipitacao, get_mare,
     get_fase_lua_descricao, get_vento_descricao,
@@ -7,25 +7,22 @@ from mergulho_check_github import (
 )
 from datetime import datetime
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
+def generate_html():
     data_hora = datetime.now()
-
+    
     # Coletar dados
     fase_lunar = get_fase_lua(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
     vento = get_vento(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
     precipitacao = get_precipitacao(CONFIG["LATITUDE"], CONFIG["LONGITUDE"])
     mare = get_mare(CONFIG["LATITUDE"], CONFIG["LONGITUDE"], data_hora)
-
+    
     # Processar descrições
     nome_fase, desc_fase = get_fase_lua_descricao(fase_lunar)
     desc_vento, imp_vento = get_vento_descricao(vento)
     desc_precip, imp_precip = get_precipitacao_descricao(precipitacao)
     desc_mare, imp_mare = get_mare_descricao(mare)
-
-    # Preparar dados para template
+    
+    # Preparar dados
     conditions = [
         {
             "icon": "🌙",
@@ -53,17 +50,10 @@ def home():
             "title": "Maré",
             "description": imp_mare,
             "status": f"{desc_mare} ({mare:.1f} m)",
-            "alert_type": "info"
-        },
-        {
-            "icon": "🌞",
-            "title": "Estação",
-            "description": "Condições da estação atual",
-            "status": get_estacao(),
             "alert_type": "warning"
         }
     ]
-
+    
     # Calcular avaliação
     condicoes_ideais = (vento < 15 and precipitacao < 5 and mare < 1.5)
     if condicoes_ideais:
@@ -91,12 +81,57 @@ def home():
             "description": "Condições climáticas desfavoráveis para mergulho. Não recomendado para mergulho hoje. Considere adiar."
         }
 
-    try:
-        return render_template('index.html', 
-                             conditions=conditions,
-                             evaluation=evaluation)
-    except Exception as e:
-        return f"Error: {str(e)}", 500
+    # Gerar HTML
+    conditions_html = ""
+    for condition in conditions:
+        conditions_html += f"""
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="condition-icon">{condition['icon']}</div>
+                    <h5 class="card-title">{condition['title']}</h5>
+                    <p class="card-text">{condition['description']}</p>
+                    <div class="alert alert-{condition['alert_type']}">
+                        {condition['status']}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Condições de Mergulho</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1>Condições de Mergulho - {CONFIG['CIDADE']}</h1>
+            <p>Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}</p>
+            <div class="row">
+                {conditions_html}
+            </div>
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <h3>Avaliação Geral</h3>
+                    <div class="display-4">{evaluation['status']}</div>
+                    <p class="lead">{evaluation['description']}</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {evaluation['score']}%">
+                            {evaluation['score']}/100
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+if __name__ == "__main__":
+    html_content = generate_html()
+    with open('templates/index.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    print("HTML gerado com sucesso!")
