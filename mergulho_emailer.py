@@ -11,11 +11,8 @@ import json
 import requests
 import smtplib
 from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
 import random
-from jinja2 import Template, FileSystemLoader, Environment
 
 # Configurações
 CONFIG = {
@@ -237,121 +234,6 @@ def get_correntes_descricao(velocidade, direcao):
     else:
         return "Muito Forte", "Condições críticas. Correntes muito fortes tornam o mergulho perigoso, com alto risco de fadiga e consumo excessivo de ar. Não recomendado para mergulho."
 
-def gerar_relatorio_html(data_hora, fase_lunar, nome_fase, descricao_fase,
-                       vento, descricao_vento, impacto_vento,
-                       precipitacao, descricao_precip, impacto_precip,
-                       mare, descricao_mare, impacto_mare,
-                       velocidade_corrente, descricao_corrente, impacto_corrente,
-                       estacao, avaliacao, pontuacao, descricao, recomendacao):
-    """Gera o conteúdo do email em formato HTML"""
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Relatório de Condições de Mergulho</title>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    </head>
-    <body>
-        <div class="container">
-            <h1>Relatório de Condições de Mergulho - {cidade}</h1>
-            <p>Data e Hora: {data_hora}</p>
-            <div class="row">
-                {conditions_html}
-            </div>
-            <div class="card mt-4">
-                <div class="card-body text-center">
-                    <h3>Avaliação Geral</h3>
-                    <div class="display-4">{evaluation_status}</div>
-                    <p class="lead">{evaluation_description}</p>
-                    <div class="progress">
-                        <div class="progress-bar" role="progressbar" style="width: {evaluation_score}%">
-                            {evaluation_score}/100
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    </body>
-    </html>
-    """
-
-    conditions = [
-        {
-            "icon": "🌙",
-            "title": "Fase da Lua",
-            "description": descricao_fase,
-            "status": nome_fase,
-            "alert_type": "info"
-        },
-        {
-            "icon": "💨",
-            "title": "Vento",
-            "description": impacto_vento,
-            "status": f"{descricao_vento} ({vento:.1f} km/h)",
-            "alert_type": "primary"
-        },
-        {
-            "icon": "🌧️",
-            "title": "Precipitação",
-            "description": impacto_precip,
-            "status": f"{descricao_precip} ({precipitacao:.1f} mm)",
-            "alert_type": "secondary"
-        },
-        {
-            "icon": "🌊",
-            "title": "Maré",
-            "description": impacto_mare,
-            "status": f"{descricao_mare} ({mare:.1f} m)",
-            "alert_type": "info"
-        },
-        {
-            "icon": "🌊",
-            "title": "Correntes",
-            "description": impacto_corrente,
-            "status": f"{descricao_corrente} ({velocidade_corrente:.1f} m/s)",
-            "alert_type": "warning"
-        },
-        {
-            "icon": "🌞",
-            "title": "Estação",
-            "description": "Condições da estação atual",
-            "status": estacao,
-            "alert_type": "warning"
-        }
-    ]
-
-    # Generate conditions HTML
-    conditions_html = ""
-    for condition in conditions:
-        conditions_html += f"""
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <div class="condition-icon">{condition['icon']}</div>
-                    <h5 class="card-title">{condition['title']}</h5>
-                    <p class="card-text">{condition['description']}</p>
-                    <div class="alert alert-{condition['alert_type']}">
-                        {condition['status']}
-                    </div>
-                </div>
-            </div>
-        </div>
-        """
-
-    # Format the final HTML
-    return html_template.format(
-        cidade=CONFIG['CIDADE'],
-        data_hora=data_hora.strftime('%d/%m/%Y %H:%M'),
-        conditions_html=conditions_html,
-        evaluation_status=avaliacao,
-        evaluation_description=descricao,
-        evaluation_score=pontuacao
-    )
-
-
 def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase, 
                         vento, descricao_vento, impacto_vento,
                         precipitacao, descricao_precip, impacto_precip,
@@ -399,17 +281,13 @@ Recomendação: {recomendacao}
 {'='*60}
 """
 
-def enviar_email(conteudo_html, conteudo_texto):
-    """Envia o email com o relatório em formato HTML e texto"""
+def enviar_email(conteudo_texto):
+    """Envia o email com o relatório em formato texto"""
     try:
-        msg = MIMEMultipart('alternative')
+        msg = MIMEText(conteudo_texto, "plain")
         msg["From"] = CONFIG["EMAIL_USER"]
         msg["To"] = ", ".join(CONFIG["EMAIL_DESTINATARIOS"])
         msg["Subject"] = f"Relatório de Condições de Mergulho - {CONFIG['CIDADE']} - {datetime.now().strftime('%d/%m/%Y')}"
-
-        # Adiciona ambas versões do conteúdo
-        msg.attach(MIMEText(conteudo_texto, "plain"))
-        msg.attach(MIMEText(conteudo_html, "html"))
 
         server = smtplib.SMTP(CONFIG["SMTP_SERVER"], CONFIG["SMTP_PORT"])
         server.starttls()
@@ -528,15 +406,6 @@ def main():
         print("="*60 + "\n")
 
         # Gerar e enviar email
-        conteudo_html = gerar_relatorio_html(
-            data_hora, fase_lunar, nome_fase, descricao_fase,
-            vento, descricao_vento, impacto_vento,
-            precipitacao, descricao_precip, impacto_precip,
-            mare, descricao_mare, impacto_mare,
-            velocidade_corrente, descricao_corrente, impacto_corrente,
-            estacao, avaliacao, pontuacao, descricao, recomendacao
-        )
-
         conteudo_texto = gerar_relatorio_texto(
             data_hora, fase_lunar, nome_fase, descricao_fase,
             vento, descricao_vento, impacto_vento,
@@ -546,7 +415,7 @@ def main():
             estacao, avaliacao, pontuacao, descricao, recomendacao
         )
 
-        if enviar_email(conteudo_html, conteudo_texto):
+        if enviar_email(conteudo_texto):
             print("✅ Relatório enviado por email com sucesso!")
         else:
             print("❌ Falha ao enviar o relatório por email.")
