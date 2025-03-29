@@ -77,19 +77,19 @@ def home():
         evaluation = {
             "status": "👍 BOM",
             "score": 70,
-            "description": "Boas condições para mergulho hoje."
+            "description": "Você pode mergulhar com relativa tranquilidade."
         }
     elif vento < 25 and precipitacao < 15 and mare < 2.0:
         evaluation = {
             "status": "⚠️ REGULAR",
             "score": 50,
-            "description": "Condições aceitáveis para mergulho hoje."
+            "description": "Mergulhe com cautela e atenção às mudanças nas condições."
         }
     else:
         evaluation = {
             "status": "❌ NÃO RECOMENDADO",
             "score": 27,
-            "description": "Condições não recomendadas para mergulho hoje."
+            "description": "Não recomendado para mergulho hoje. Considere adiar."
         }
     
     try:
