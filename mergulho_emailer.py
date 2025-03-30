@@ -310,46 +310,63 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
     fases_texto = ""
     if fase_atual_info:
         fases_texto += f"""
-🌙 Fase Lunar Atual: {fase_atual_info['nome']}
-   Data: {fase_atual_info['data_completa']}
-   {descricao_fase}
+🌙 FASE LUNAR ATUAL
+──────────────────
+{fase_atual_info['nome']}
+Data: {fase_atual_info['data_completa']}
+{descricao_fase}
 """
 
     if proximas_fases_info:
-        fases_texto += "\n📅 Próximas Fases Lunares:\n"
+        fases_texto += f"""
+📅 PRÓXIMAS FASES LUNARES
+───────────────────────"""
         for fase in proximas_fases_info:
             fases_texto += f"""
-   • {fase['nome']} em {fase['dias_faltantes']} dias
-     Data: {fase['data_completa']}
-"""
+• {fase['nome']} em {fase['dias_faltantes']} dias
+  Data: {fase['data_completa']}"""
 
     return f"""
 {'='*60}
 🌊 CONDICIONÔMETRO DE MERGULHO - {CONFIG['CIDADE']}/{CONFIG['ESTADO']} 🌊
 {'='*60}
 
-📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)
-💡 {descricao}
-🎯 {recomendacao}
-{'='*60}
+📊 AVALIAÇÃO GERAL
+────────────────
+{avaliacao} ({pontuacao}/100)
+{descricao}
+{recomendacao}
 
-📅 Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}
+📅 DATA E HORA
+─────────────
+{data_hora.strftime('%d/%m/%Y %H:%M')}
 
 {fases_texto}
-💨 Vento: {descricao_vento} ({vento:.1f} km/h)
-   {impacto_vento}
 
-🌧️ Precipitação: {descricao_precip} ({precipitacao:.1f} mm)
-   {impacto_precip}
+💨 VENTO
+───────
+{descricao_vento} ({vento:.1f} km/h)
+{impacto_vento}
 
-🌊 Maré: {descricao_mare} ({mare:.1f} m)
-   {impacto_mare}
+🌧️ PRECIPITAÇÃO
+──────────────
+{descricao_precip} ({precipitacao:.1f} mm)
+{impacto_precip}
 
-🌊 Correntes: {descricao_corrente} ({velocidade_corrente:.1f} m/s)
-   {impacto_corrente}
+🌊 MARÉ
+──────
+{descricao_mare} ({mare:.1f} m)
+{impacto_mare}
 
-🌞 Estação: {estacao}
-   {'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}
+🌊 CORRENTES
+───────────
+{descricao_corrente} ({velocidade_corrente:.1f} m/s)
+{impacto_corrente}
+
+🌞 ESTAÇÃO
+─────────
+{estacao}
+{'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}
 
 {'='*60}
 🌐 Dados fornecidos por StormGlass API e OpenWeatherMap API
@@ -361,13 +378,13 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
 {'='*60}
 """
 
-def enviar_email(conteudo_texto):
+def enviar_email(conteudo_texto, avaliacao, pontuacao, descricao):
     """Envia o email com o relatório em formato texto"""
     try:
         msg = MIMEText(conteudo_texto, "plain")
         msg["From"] = CONFIG["EMAIL_USER"]
         msg["To"] = ", ".join(CONFIG["EMAIL_DESTINATARIOS"])
-        msg["Subject"] = f"Relatório de Condições de Mergulho - {CONFIG['CIDADE']} - {datetime.now().strftime('%d/%m/%Y')}"
+        msg["Subject"] = f"🌊 Mergulho {CONFIG['CIDADE']} - {avaliacao} ({pontuacao}/100) - {descricao}"
 
         server = smtplib.SMTP(CONFIG["SMTP_SERVER"], CONFIG["SMTP_PORT"])
         server.starttls()
@@ -521,7 +538,7 @@ def main():
             fase_atual, proximas_fases
         )
 
-        if enviar_email(conteudo_texto):
+        if enviar_email(conteudo_texto, avaliacao, pontuacao, descricao):
             print("✅ Relatório enviado por email com sucesso!")
         else:
             print("❌ Falha ao enviar o relatório por email.")
