@@ -328,6 +328,11 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
 🌊 CONDICIONÔMETRO DE MERGULHO - {CONFIG['CIDADE']}/{CONFIG['ESTADO']} 🌊
 {'='*60}
 
+📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)
+💡 {descricao}
+🎯 {recomendacao}
+{'='*60}
+
 📅 Data e Hora: {data_hora.strftime('%d/%m/%Y %H:%M')}
 
 {fases_texto}
@@ -347,11 +352,6 @@ def gerar_relatorio_texto(data_hora, fase_lunar, nome_fase, descricao_fase,
    {'Estação ideal para mergulho!' if estacao in ['Verão', 'Primavera'] else 'Condições aceitáveis para mergulho'}
 
 {'='*60}
-📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)
-{descricao}
-Recomendação: {recomendacao}
-{'='*60}
-
 🌐 Dados fornecidos por StormGlass API e OpenWeatherMap API
 👨‍💻 Desenvolvido pelo pirata Héric Moura
 🌍 Visite: {CONFIG['SITE_URL']}
@@ -503,14 +503,6 @@ def main():
             pontuacao = max(27 + ajuste_estacao + ajuste_correntes + ajuste_lua, 27)  # Mínimo de 27
             descricao = "Condições climáticas desfavoráveis para mergulho."
             recomendacao = "Condições climáticas instáveis. Recomenda-se adiar a prática de mergulho."
-
-        # Adiciona informação sobre os ajustes na descrição
-        if ajuste_estacao != 0 or ajuste_correntes != 0 or ajuste_lua != 0:
-            descricao += f" {'(Bônus de +' + str(ajuste_estacao) + ' pontos pela estação)' if ajuste_estacao > 0 else '(Penalidade de ' + str(abs(ajuste_estacao)) + ' pontos pela estação)'}"
-            if ajuste_correntes != 0:
-                descricao += f" {'(Bônus de +' + str(ajuste_correntes) + ' pontos pelas correntes)' if ajuste_correntes > 0 else '(Penalidade de ' + str(abs(ajuste_correntes)) + ' pontos pelas correntes)'}"
-            if ajuste_lua != 0:
-                descricao += f" {'(Bônus de +' + str(ajuste_lua) + ' pontos pela fase lunar)' if ajuste_lua > 0 else '(Penalidade de ' + str(abs(ajuste_lua)) + ' pontos pela fase lunar)'}"
 
         print("="*60)
         print(f"📊 AVALIAÇÃO: {avaliacao} ({pontuacao}/100)")
