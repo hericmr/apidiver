@@ -51,9 +51,9 @@ def get_fase_lua(lat, lon, data):
             dados = response.json()
 
             if dados and dados.get('phasedata'):
-                # Ordenar fases por proximidade da data atual
+                # Ordenar fases por data
                 fases = sorted(dados['phasedata'], 
-                             key=lambda x: abs(datetime.strptime(f"{x['year']}-{x['month']}-{x['day']}", '%Y-%m-%d') - data))
+                             key=lambda x: datetime.strptime(f"{x['year']}-{x['month']}-{x['day']}", '%Y-%m-%d'))
 
                 # Traduzir nomes das fases para português
                 fase_map = {
@@ -67,13 +67,30 @@ def get_fase_lua(lat, lon, data):
                 for fase in fases:
                     fase['phase'] = fase_map.get(fase['phase'], fase['phase'])
 
-                fase_proxima = fases[0]
-                data_fase = datetime.strptime(f"{fase_proxima['year']}-{fase_proxima['month']}-{fase_proxima['day']}", '%Y-%m-%d')
+                # Encontrar a fase atual e a próxima
+                fase_atual = None
+                fase_proxima = None
+                data_atual = data.date()
 
-                # Calcular diferença em dias
-                dif_dias = abs((data - data_fase).days)
+                for i in range(len(fases)):
+                    data_fase = datetime.strptime(f"{fases[i]['year']}-{fases[i]['month']}-{fases[i]['day']}", '%Y-%m-%d').date()
+                    if i > 0:
+                        data_fase_anterior = datetime.strptime(f"{fases[i-1]['year']}-{fases[i-1]['month']}-{fases[i-1]['day']}", '%Y-%m-%d').date()
+                        if data_fase_anterior <= data_atual < data_fase:
+                            fase_atual = fases[i-1]
+                            fase_proxima = fases[i]
+                            break
+                    if i == len(fases) - 1 and not fase_atual:
+                        # Se estamos após a última fase listada
+                        fase_atual = fases[-1]
+                        fase_proxima = None
 
-                # Converter fase para valor numérico
+                if not fase_atual:
+                    # Se estamos antes da primeira fase listada
+                    fase_atual = fases[0]
+                    fase_proxima = fases[1] if len(fases) > 1 else None
+
+                # Calcular valor numérico da fase
                 fase_valor_map = {
                     'Lua Nova': 0,
                     'Quarto Crescente': 25,
@@ -81,20 +98,29 @@ def get_fase_lua(lat, lon, data):
                     'Quarto Minguante': 75
                 }
 
-                fase_base = fase_valor_map.get(fase_proxima['phase'], 0)
-
-                # Ajustar fase baseado na diferença de dias
-                if dif_dias > 0:
-                    if fase_base == 0:  # Lua Nova
-                        return min(dif_dias * 3.5, 25), fase_proxima, fases[1:]  # Crescente
-                    elif fase_base == 25:  # Quarto Crescente
-                        return min(25 + dif_dias * 3.5, 50), fase_proxima, fases[1:]  # Crescente Gibosa
-                    elif fase_base == 50:  # Lua Cheia
-                        return min(50 + dif_dias * 3.5, 75), fase_proxima, fases[1:]  # Minguante Gibosa
-                    else:  # Quarto Minguante
-                        return min(75 + dif_dias * 3.5, 100), fase_proxima, fases[1:]  # Minguante
-
-                return fase_base, fase_proxima, fases[1:]
+                fase_base = fase_valor_map.get(fase_atual['phase'], 0)
+                
+                # Se temos uma próxima fase, ajustar o valor baseado na progressão
+                if fase_proxima:
+                    data_atual = data.date()
+                    data_fase_atual = datetime.strptime(f"{fase_atual['year']}-{fase_atual['month']}-{fase_atual['day']}", '%Y-%m-%d').date()
+                    data_proxima_fase = datetime.strptime(f"{fase_proxima['year']}-{fase_proxima['month']}-{fase_proxima['day']}", '%Y-%m-%d').date()
+                    
+                    dias_total = (data_proxima_fase - data_fase_atual).days
+                    dias_passados = (data_atual - data_fase_atual).days
+                    
+                    if dias_total > 0:
+                        progresso = dias_passados / dias_total
+                        proxima_fase_valor = fase_valor_map.get(fase_proxima['phase'], 0)
+                        
+                        # Ajustar para ciclo completo se necessário
+                        if fase_base > proxima_fase_valor:
+                            proxima_fase_valor += 100
+                        
+                        fase_atual_valor = fase_base + (proxima_fase_valor - fase_base) * progresso
+                        return fase_atual_valor % 100, fase_atual, fases[1:] if fase_atual == fases[0] else fases
+                
+                return fase_base, fase_atual, fases[1:] if fase_atual == fases[0] else fases
     except Exception as e:
         print(f"Erro ao consultar fase da lua: {e}")
 
@@ -164,9 +190,10 @@ def get_fase_lua_descricao(fase_lunar, fase_atual, proximas_fases):
     """Retorna descrição detalhada da fase lunar com base na visibilidade subaquática."""
     if fase_lunar < 5:
         return "Lua Nova", (
-            "Fase lunar CRÍTICA. Visibilidade subaquática SEVERAMENTE comprometida devido à maior variação da maré de sizígia, "
-            "que intensifica significativamente a resuspensão de sedimentos e aumenta drasticamente a turbidez. A amplitude máxima das marés "
-            "nesta fase pode exceder 2.5m, gerando correntes de até 3.0 nós. Condições extremamente desfavoráveis para mergulho. "
+            "Nessa lua, é essencial checar a previsão do tempo, vento e correntes marítimas. "
+            "Se o mar estiver calmo, pode ser uma excelente experiência. Caso contrário, é melhor "
+            "escolher um período com menor variação de marés, como o quarto crescente ou minguante. "
+            "A amplitude das marés nesta fase pode exceder 2.5m, gerando correntes de até 3.0 nós. "
             "(Yang et al., 2020; Kumar et al., 2019)"
         )
     elif fase_lunar < 25:
@@ -335,7 +362,7 @@ Data: {fase_atual_info['data_completa']}
 
     return f"""
 {'='*60}
-🌊 CONDICIONÔMETRO DE MERGULHO - {CONFIG['CIDADE']}/{CONFIG['ESTADO']} 🌊
+🌊 MERGULHÔMETRO DE SANTOS/SP 🌊
 {'='*60}
 
 📊 AVALIAÇÃO GERAL
@@ -391,7 +418,7 @@ def enviar_email(conteudo_texto, avaliacao, pontuacao, descricao):
         msg = MIMEText(conteudo_texto, "plain")
         msg["From"] = CONFIG["EMAIL_USER"]
         msg["To"] = ", ".join(CONFIG["EMAIL_DESTINATARIOS"])
-        msg["Subject"] = f"🌊 Mergulho {CONFIG['CIDADE']} - {avaliacao} ({pontuacao}/100) - {descricao}"
+        msg["Subject"] = f"🌊 Mergulhômetro Santos/SP - {avaliacao} ({pontuacao}/100) - {descricao}"
 
         server = smtplib.SMTP(CONFIG["SMTP_SERVER"], CONFIG["SMTP_PORT"])
         server.starttls()
@@ -437,7 +464,7 @@ def enviar_whatsapp(avaliacao, pontuacao, descricao, data_hora):
 def main():
     try:
         print("\n" + "="*60)
-        print("🌊 CONDICIONÔMETRO DE MERGULHO - SANTOS/SP 🌊")
+        print("🌊 MERGULHÔMETRO DE SANTOS/SP 🌊")
         print("="*60 + "\n")
 
         # Obter data/hora atual
@@ -525,7 +552,7 @@ def main():
         # Ajuste de pontuação baseado na fase lunar
         ajuste_lua = 0
         if fase_lunar < 5:  # Lua Nova
-            ajuste_lua = -15  # Penalidade maior para lua nova
+            ajuste_lua = -10  # Penalidade reduzida para lua nova (era -15)
         elif fase_lunar < 25:  # Lua Crescente
             ajuste_lua = 5  # Bônus para lua crescente
         elif fase_lunar < 45:  # Quarto Crescente
