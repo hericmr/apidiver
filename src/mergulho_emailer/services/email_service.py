@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from ..config.settings import Settings
 from ..models.moon_phase import MoonPhase
+from ..models.dados_mergulho import DadosMergulho
 import pytz
 
 class EmailService:
