@@ -648,6 +648,8 @@ class EmailService:
             mare=dados_mergulho.mare,
             vento=dados_mergulho.vento,
             descricao_vento=descricao_vento,
+            temperatura_agua=dados_mergulho.temperatura_agua,
+            temperatura_ar=dados_mergulho.temperatura_ar,
             recomendacao=recomendacao
         )
 
@@ -750,3 +752,190 @@ class EmailService:
         
         return ("Condições adequadas para mergulho. Mantenha os procedimentos de segurança "
                "e aproveite sua experiência subaquática.") 
+
+    EMAIL_TEMPLATE = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #f5f5f5;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            .header {{
+                text-align: center;
+                padding: 20px 0;
+                background-color: #1565c0;
+                color: white;
+                border-radius: 8px 8px 0 0;
+            }}
+            .header h1 {{
+                margin: 0;
+                font-size: 24px;
+                font-weight: 600;
+            }}
+            .content {{
+                padding: 20px;
+            }}
+            .info-section {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }}
+            .info-item {{
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 6px;
+                border-left: 4px solid #1565c0;
+            }}
+            .info-item h3 {{
+                margin: 0 0 10px 0;
+                color: #1565c0;
+                font-size: 18px;
+            }}
+            .info-item .scientific-note {{
+                font-size: 13px;
+                color: #666;
+                font-style: italic;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px dashed rgba(0,0,0,0.1);
+            }}
+            .moon-phase-value {{
+                font-size: 20px;
+                font-weight: 600;
+                color: #1565c0;
+                margin: 10px 0;
+            }}
+            .scientific-description {{
+                font-size: 15px;
+                line-height: 1.6;
+                color: #34495e;
+                margin: 12px 0;
+            }}
+            .next-phase {{
+                font-size: 14px;
+                color: #1565c0;
+                font-weight: 500;
+                margin: 8px 0;
+            }}
+            .recommendation {{
+                padding: 15px;
+            }}
+            .recommendation h3 {{
+                color: #1565c0;
+                font-size: 18px;
+                margin-bottom: 12px;
+            }}
+            .main-recommendation {{
+                font-size: 16px;
+                color: #2c3e50;
+                line-height: 1.6;
+                margin-bottom: 15px;
+            }}
+            .safety-note {{
+                background-color: #fff3e0;
+                padding: 12px;
+                border-radius: 4px;
+                margin-top: 15px;
+                font-size: 14px;
+                color: #ef6c00;
+                border-left: 3px solid #ef6c00;
+            }}
+            /* Media queries para responsividade */
+            @media (max-width: 600px) {{
+                .container {{
+                    margin: 10px;
+                    padding: 10px;
+                }}
+                .header {{
+                    padding: 15px 0;
+                }}
+                .header h1 {{
+                    font-size: 20px;
+                }}
+                .info-section {{
+                    grid-template-columns: 1fr;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Relatório de Condições para Mergulho</h1>
+            </div>
+            <div class="content">
+                <div class="info-section">
+                    <div class="info-item">
+                        <h3>Fase da Lua</h3>
+                        <div class="moon-phase-value">{fase_lunar:.1f}% do ciclo</div>
+                        <div class="scientific-description">
+                            A fase lunar atual influencia diretamente as marés através da força gravitacional. {descricao_fase}
+                        </div>
+                        <div class="next-phase">Próxima fase: {proximas_fases_info[0]['nome']} em {proximas_fases_info[0]['dias_faltantes']} dias</div>
+                        <div class="scientific-note">
+                            Nota: A influência lunar nas marés é mais pronunciada durante as fases de Lua Nova e Lua Cheia, 
+                            quando ocorrem as marés de sizígia.
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <h3>Condições do Mar</h3>
+                        <div class="scientific-description">
+                            Altura das ondas: {mare:.1f}m
+                            <br>
+                            Direção do vento: {descricao_vento}
+                            <br>
+                            Velocidade do vento: {vento:.1f} km/h
+                        </div>
+                        <div class="scientific-note">
+                            A altura das ondas e condições do vento são fatores críticos que afetam a visibilidade 
+                            subaquática e a segurança do mergulho.
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <h3>Temperatura</h3>
+                        <div class="scientific-description">
+                            Temperatura da água: {temperatura_agua:.1f}°C
+                            <br>
+                            Temperatura do ar: {temperatura_ar:.1f}°C
+                        </div>
+                        <div class="scientific-note">
+                            A temperatura da água influencia diretamente o metabolismo da vida marinha e o conforto 
+                            térmico do mergulhador.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recommendation">
+                    <h3>Recomendação para Mergulho</h3>
+                    <div class="main-recommendation">
+                        {recomendacao}
+                    </div>
+                    <div class="safety-note">
+                        Lembre-se: Sempre verifique seu equipamento, respeite os limites de profundidade e tempo, 
+                        e nunca mergulhe sozinho. A segurança é nossa prioridade!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """ 
