@@ -2,9 +2,10 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 from ..config.settings import Settings
 from ..models.moon_phase import MoonPhase
+import pytz
 
 class EmailService:
     def __init__(self):
@@ -622,6 +623,12 @@ class EmailService:
         Returns:
             str: Conteúdo do email formatado em HTML
         """
+        # Definir o fuso horário de São Paulo
+        tz_sp = pytz.timezone('America/Sao_Paulo')
+        
+        # Converter a data para o fuso horário de São Paulo
+        data_sp = dados_mergulho.data.astimezone(tz_sp)
+        
         # Preparar descrições e recomendações
         descricao_vento = self._get_descricao_vento(dados_mergulho.vento)
         descricao_fase = self._get_descricao_fase_lunar(dados_mergulho.fase_lunar)
@@ -632,8 +639,8 @@ class EmailService:
         
         # Formatar o template com os dados
         return self.EMAIL_TEMPLATE.format(
-            data=dados_mergulho.data.strftime("%d/%m/%Y"),
-            hora=dados_mergulho.data.strftime("%H:%M"),
+            data=data_sp.strftime("%d/%m/%Y"),
+            hora=data_sp.strftime("%H:%M"),
             fase_lunar=dados_mergulho.fase_lunar,
             descricao_fase=descricao_fase,
             proximas_fases_info=proximas_fases,
