@@ -13,7 +13,6 @@ import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 import random
-from twilio.rest import Client
 
 # Configurações
 CONFIG = {
@@ -29,12 +28,6 @@ CONFIG = {
     "EMAIL_USER": os.getenv("EMAIL_USER", "heric.m.r@gmail.com"),
     "EMAIL_PASS": os.getenv("EMAIL_PASS", "khuk mkoy jyvz vajk"),
     "EMAIL_DESTINATARIOS": os.getenv("EMAIL_DESTINATARIOS", "heric.m.r@gmail.com").split(","),
-    "TWILIO_ACCOUNT_SID": os.getenv("TWILIO_ACCOUNT_SID", "AC2ccc0246cf125ad93a526bbb8de41961"),
-    "TWILIO_AUTH_TOKEN": os.getenv("TWILIO_AUTH_TOKEN", "b11ebae53f181974e640434126d562df"),
-    "TWILIO_FROM_NUMBER": os.getenv("TWILIO_FROM_NUMBER", "whatsapp:+14155238886"),
-    "TWILIO_TO_NUMBER": os.getenv("TWILIO_TO_NUMBER", "whatsapp:+5513991812210"),
-    "TWILIO_CONTENT_SID": os.getenv("TWILIO_CONTENT_SID", "HXb5b62575e6e4ff6129ad7c8efe1f983e"),
-    "ENVIAR_WHATSAPP": os.getenv("ENVIAR_WHATSAPP", "True").lower() in ("true", "1", "t")
 }
 
 def get_fase_lua(lat, lon, data):
@@ -431,36 +424,6 @@ def enviar_email(conteudo_texto, avaliacao, pontuacao, descricao):
         print(f"❌ Erro ao enviar email: {e}")
         return False
 
-def enviar_whatsapp(avaliacao, pontuacao, descricao, data_hora):
-    """Envia uma mensagem de WhatsApp com o resumo do relatório usando Twilio"""
-    try:
-        # Configurar cliente Twilio
-        client = Client(CONFIG["TWILIO_ACCOUNT_SID"], CONFIG["TWILIO_AUTH_TOKEN"])
-        
-        # Formatar data para variáveis de conteúdo
-        data_formatada = data_hora.strftime('%d/%m')
-        hora_formatada = data_hora.strftime('%Hh')
-        
-        # Enviar mensagem
-        message = client.messages.create(
-            from_=CONFIG["TWILIO_FROM_NUMBER"],
-            content_sid=CONFIG["TWILIO_CONTENT_SID"],
-            content_variables=json.dumps({
-                "1": data_formatada,
-                "2": hora_formatada,
-                "3": avaliacao.replace("🌟 ", "").replace("👍 ", "").replace("⚠️ ", "").replace("❌ ", ""),
-                "4": str(int(pontuacao)),
-                "5": descricao
-            }),
-            to=CONFIG["TWILIO_TO_NUMBER"]
-        )
-        
-        print(f"✅ WhatsApp enviado com sucesso! SID: {message.sid}")
-        return True
-    except Exception as e:
-        print(f"❌ Erro ao enviar WhatsApp: {e}")
-        return False
-
 def main():
     try:
         print("\n" + "="*60)
@@ -606,13 +569,6 @@ def main():
             print("✅ Relatório enviado por email com sucesso!")
         else:
             print("❌ Falha ao enviar o relatório por email.")
-            
-        # Enviar mensagem de WhatsApp se configurado
-        if CONFIG["ENVIAR_WHATSAPP"]:
-            if enviar_whatsapp(avaliacao, pontuacao, descricao, data_hora):
-                print("✅ Relatório enviado por WhatsApp com sucesso!")
-            else:
-                print("❌ Falha ao enviar o relatório por WhatsApp.")
 
         return 0
 
