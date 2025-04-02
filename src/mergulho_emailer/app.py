@@ -109,7 +109,8 @@ class MergulhoEmailer:
                 weather.tide_height, descricao_mare, impacto_mare,
                 velocidade_corrente, descricao_corrente, impacto_corrente,
                 estacao, avaliacao, pontuacao, descricao, recomendacao,
-                fase_atual, proximas_fases
+                fase_atual, proximas_fases,
+                weather.temperatura_agua, weather.temperatura_ar
             )
 
             # Enviar email

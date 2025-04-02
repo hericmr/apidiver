@@ -44,7 +44,8 @@ class EmailService:
                            mare, descricao_mare, impacto_mare,
                            velocidade_corrente, descricao_corrente, impacto_corrente,
                            estacao, avaliacao, pontuacao, descricao, recomendacao,
-                           fase_atual, proximas_fases):
+                           fase_atual, proximas_fases,
+                           temperatura_agua, temperatura_ar):
         """Gera o conteúdo HTML do relatório com um design moderno e responsivo."""
         # Formatar informações da lua
         fase_atual_info = fase_atual.get_formatted_date() if fase_atual else None
@@ -185,9 +186,9 @@ class EmailService:
                 <div class="info-item">
                     <h3>Temperatura</h3>
                     <div class="scientific-description">
-                        Temperatura da água: {mare:.1f}°C
+                        Temperatura da água: {temperatura_agua:.1f}°C
                         <br>
-                        Temperatura do ar: {vento:.1f}°C
+                        Temperatura do ar: {temperatura_ar:.1f}°C
                     </div>
                     <div class="scientific-note">
                         A temperatura da água influencia diretamente o metabolismo da vida marinha e o conforto 
@@ -472,47 +473,47 @@ class EmailService:
             font-size: 32px;
             margin-bottom: 10px;
         }}
-        .info-item .scientific-note {
+        .info-item .scientific-note {{
             font-size: 13px;
             color: #666;
             font-style: italic;
             margin-top: 8px;
             padding-top: 8px;
             border-top: 1px dashed rgba(0,0,0,0.1);
-        }
-        .moon-phase-value {
+        }}
+        .moon-phase-value {{
             font-size: 20px;
             font-weight: 600;
             color: #1565c0;
             margin: 10px 0;
-        }
-        .scientific-description {
+        }}
+        .scientific-description {{
             font-size: 15px;
             line-height: 1.6;
             color: #34495e;
             margin: 12px 0;
-        }
-        .next-phase {
+        }}
+        .next-phase {{
             font-size: 14px;
             color: #1565c0;
             font-weight: 500;
             margin: 8px 0;
-        }
-        .recommendation {
+        }}
+        .recommendation {{
             padding: 15px;
-        }
-        .recommendation h3 {
+        }}
+        .recommendation h3 {{
             color: #1565c0;
             font-size: 18px;
             margin-bottom: 12px;
-        }
-        .main-recommendation {
+        }}
+        .main-recommendation {{
             font-size: 16px;
             color: #2c3e50;
             line-height: 1.6;
             margin-bottom: 15px;
-        }
-        .safety-note {
+        }}
+        .safety-note {{
             background-color: #fff3e0;
             padding: 12px;
             border-radius: 4px;
@@ -520,7 +521,7 @@ class EmailService:
             font-size: 14px;
             color: #ef6c00;
             border-left: 3px solid #ef6c00;
-        }
+        }}
         /* Media queries para responsividade */
         @media (max-width: 600px) {{
             .container {{
