@@ -8,6 +8,18 @@ class MoonPhase:
         self.year = phase_data.get('year')
         self.month = phase_data.get('month')
         self.day = phase_data.get('day')
+        
+        # Mapeamento de fases para percentuais do ciclo lunar
+        self.phase_map = {
+            'Lua Nova': 0,
+            'Lua Crescente': 12.5,
+            'Quarto Crescente': 25,
+            'Lua Crescente Gibosa': 37.5,
+            'Lua Cheia': 50,
+            'Lua Minguante Gibosa': 62.5,
+            'Quarto Minguante': 75,
+            'Lua Minguante': 87.5
+        }
 
     def get_formatted_date(self):
         """Formata a data da fase lunar no formato desejado"""
@@ -28,25 +40,13 @@ class MoonPhase:
         """Retorna o valor numérico da fase lunar"""
         print(f"[DEBUG] Fase atual: {self.phase}")
         
-        # Mapeamento de fases para percentuais do ciclo lunar
-        fase_valor_map = {
-            'Lua Nova': 0,
-            'Lua Crescente': 12.5,
-            'Quarto Crescente': 25,
-            'Lua Crescente Gibosa': 37.5,
-            'Lua Cheia': 50,
-            'Lua Minguante Gibosa': 62.5,
-            'Quarto Minguante': 75,
-            'Lua Minguante': 87.5
-        }
-        
         # Se a fase não for encontrada no mapeamento, tentar usar a fase em inglês
-        if self.phase not in fase_valor_map:
+        if self.phase not in self.phase_map:
             fase_em_portugues = Settings.MOON_PHASES.get(self.phase, self.phase)
             print(f"[DEBUG] Tentando traduzir fase não mapeada: {self.phase} -> {fase_em_portugues}")
-            valor = fase_valor_map.get(fase_em_portugues, 0)
+            valor = self.phase_map.get(fase_em_portugues, 0)
         else:
-            valor = fase_valor_map.get(self.phase, 0)
+            valor = self.phase_map.get(self.phase, 0)
             
         print(f"[DEBUG] Valor calculado: {valor}")
         return valor
