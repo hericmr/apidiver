@@ -15,52 +15,52 @@ class MergulhoEmailer:
         # Inicializar pontuação
         score = 100
 
-        # Avaliar vento
-        if weather.wind_speed > 20:
+        # Avaliar vento - critérios mais rigorosos
+        if weather.wind_speed > 15:
             score -= 40
-        elif weather.wind_speed > 15:
+        elif weather.wind_speed > 12:
+            score -= 30
+        elif weather.wind_speed > 8:
+            score -= 20
+
+        # Avaliar precipitação - critérios mais rigorosos
+        if weather.precipitation > 5:
+            score -= 35
+        elif weather.precipitation > 2:
             score -= 25
-        elif weather.wind_speed > 10:
+        elif weather.precipitation > 0.5:
             score -= 15
 
-        # Avaliar precipitação
-        if weather.precipitation > 10:
+        # Avaliar maré - critérios mais rigorosos
+        if weather.tide_height < 0.7:
             score -= 30
-        elif weather.precipitation > 5:
+        elif weather.tide_height < 1.2:
             score -= 20
-        elif weather.precipitation > 1:
-            score -= 10
 
-        # Avaliar maré
-        if weather.tide_height < 0.5:
+        # Avaliar correntes - critérios mais rigorosos
+        if currents[0] > 1.5:
+            score -= 35
+        elif currents[0] > 1.2:
             score -= 25
-        elif weather.tide_height < 1.0:
+        elif currents[0] > 0.8:
             score -= 15
 
-        # Avaliar correntes
-        if currents[0] > 2.0:
-            score -= 30
-        elif currents[0] > 1.5:
-            score -= 20
-        elif currents[0] > 1.0:
-            score -= 10
+        # Avaliar fase lunar - critérios mais rigorosos
+        if moon_phase and moon_phase.get_phase_value() > 40 and moon_phase.get_phase_value() < 60:
+            score -= 25  # Lua cheia - período mais amplo
 
-        # Avaliar fase lunar
-        if moon_phase and moon_phase.get_phase_value() > 45 and moon_phase.get_phase_value() < 55:
-            score -= 20  # Lua cheia
-
-        # Determinar avaliação
-        if score >= 80:
+        # Determinar avaliação - critérios mais rigorosos
+        if score >= 85:
             evaluation = "EXCELENTE"
             description = "Condições ideais para mergulho livre."
             recommendation = "Aproveite as condições favoráveis para praticar mergulho livre."
-        elif score >= 60:
+        elif score >= 70:
             evaluation = "BOA"
             description = "Condições favoráveis para mergulho livre."
             recommendation = "Pode praticar mergulho livre, mas fique atento às condições."
-        elif score >= 40:
-            evaluation = "REGULAR"
-            description = "Condições moderadas para mergulho livre."
+        elif score >= 50:
+            evaluation = "RUIM"
+            description = "Condições ruins para mergulho livre."
             recommendation = "Considere adiar o mergulho se possível."
         else:
             evaluation = "DESFAVORÁVEL"
