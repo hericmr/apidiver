@@ -110,7 +110,7 @@ class MergulhoEmailer:
                 velocidade_corrente, descricao_corrente, impacto_corrente,
                 estacao, avaliacao, pontuacao, descricao, recomendacao,
                 fase_atual, proximas_fases,
-                weather.temperatura_agua, weather.temperatura_ar
+                getattr(weather, 'temperatura_agua', 22.0), getattr(weather, 'temperatura_ar', 25.0)
             )
 
             # Enviar email

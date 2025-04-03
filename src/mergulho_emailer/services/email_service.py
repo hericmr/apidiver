@@ -123,7 +123,6 @@ class EmailService:
                     <div class="info-grid">
                         <div class="info-item">
                             <h3>Fase Atual: {nome_fase}</h3>
-                            <p class="moon-phase-value">{fase_lunar:.1f}% do ciclo</p>
                             <div class="details">
                                 <p class="scientific-description">{descricao_fase}</p>
                                 <p class="next-phase">Próxima fase: {proximas_fases_info[0]['nome']} em {proximas_fases_info[0]['dias_faltantes']} dias</p>
@@ -157,7 +156,6 @@ class EmailService:
             <div class="info-section">
                 <div class="info-item">
                     <h3>Fase da Lua</h3>
-                    <div class="moon-phase-value">{fase_lunar:.1f}% do ciclo</div>
                     <div class="scientific-description">
                         A fase lunar atual influencia diretamente as marés através da força gravitacional. {descricao_fase}
                     </div>
@@ -885,7 +883,6 @@ class EmailService:
                 <div class="info-section">
                     <div class="info-item">
                         <h3>Fase da Lua</h3>
-                        <div class="moon-phase-value">{fase_lunar:.1f}% do ciclo</div>
                         <div class="scientific-description">
                             A fase lunar atual influencia diretamente as marés através da força gravitacional. {descricao_fase}
                         </div>

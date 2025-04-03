@@ -25,54 +25,47 @@ class MoonPhase:
         }
 
     def get_phase_value(self):
-        """Retorna o valor numérico da fase lunar"""
-        fase_valor_map = {
-            'Lua Nova': 0,
-            'Quarto Crescente': 25,
-            'Lua Cheia': 50,
-            'Quarto Minguante': 75
-        }
-        return fase_valor_map.get(self.phase, 0)
+        """Retorna o valor numérico da fase da lua."""
+        return self.phase_map.get(self.phase, 0)
+
+    def get_phase_timeline(self):
+        """Retorna uma representação visual da fase da lua em uma linha do tempo."""
+        # Emojis para as diferentes fases da lua
+        phases = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
+        current_phase = self.get_phase_value()
+        
+        # Criar a linha do tempo com 8 posições
+        timeline = ["○"] * 8
+        timeline[current_phase] = "●"
+        
+        # Adicionar emojis correspondentes
+        timeline_with_emoji = []
+        for i, (dot, emoji) in enumerate(zip(timeline, phases)):
+            if i == current_phase:
+                timeline_with_emoji.append(f"{emoji}●")
+            else:
+                timeline_with_emoji.append(f"{emoji}○")
+        
+        return " ".join(timeline_with_emoji)
 
     def get_description(self):
-        """Retorna descrição detalhada da fase lunar com base na visibilidade subaquática."""
-        fase_lunar = self.get_phase_value()
+        """Retorna descrição detalhada da fase da lua e seu impacto no mergulho livre."""
+        phase_value = self.get_phase_value()
+        phase_timeline = self.get_phase_timeline()
         
-        if fase_lunar < 5:
-            return "Lua Nova", (
-                "Nessa lua, é essencial checar a previsão do tempo, vento e correntes marítimas. "
-                "Se o mar estiver calmo, pode ser uma excelente experiência. Caso contrário, é melhor "
-                "escolher um período com menor variação de marés, como o quarto crescente ou minguante. "
-                "A amplitude das marés nesta fase pode exceder 2.5m, gerando correntes de até 3.0 nós. "
-                "(Yang et al., 2020; Kumar et al., 2019)"
-            )
-        elif fase_lunar < 25:
-            return "Lua Crescente", (
-                "Fase lunar favorável. Redução progressiva da amplitude das marés (1.2-1.5m) resulta em menor turbulência. "
-                "Estudos indicam melhoria gradual na penetração de luz e redução de 40-60% na resuspensão de sedimentos "
-                "em comparação com a fase nova. (Wilson et al., 2018)"
-            )
-        elif fase_lunar < 45:
-            return "Quarto Crescente", (
-                "Fase lunar ideal. Durante marés de quadratura (neap tides), a baixa variação da maré (0.8-1.0m) "
-                "minimiza a resuspensão de sedimentos, otimizando a visibilidade subaquática. Correntes reduzidas "
-                "a 0.5-1.0 nós favorecem condições de mergulho. (Yang et al., 2020; Thompson, 2021)"
-            )
-        elif fase_lunar < 55:
-            return "Lua Cheia", (
-                "Fase lunar crítica. Visibilidade subaquática severamente comprometida devido à maré de sizígia. "
-                "Amplitude máxima das marés (1.8-2.2m) gera turbulência significativa e correntes de até 3.0 nós. "
-                "Aumento de 80% na turbidez em comparação com quadratura. (Yang et al., 2020; Martinez et al., 2022)"
-            )
-        elif fase_lunar < 75:
-            return "Quarto Minguante", (
-                "Fase lunar favorável. Segunda maré de quadratura do ciclo resulta em amplitude reduzida (0.9-1.1m). "
-                "Estudos mostram diminuição de 65% na turbidez em comparação com lua cheia, com correntes entre "
-                "0.7-1.2 nós. (Kumar et al., 2019; Wilson et al., 2018)"
-            )
+        if phase_value == 0:
+            return f"Lua Nova\n{phase_timeline}\n\nCondições desfavoráveis para mergulho livre. A lua nova resulta em noites muito escuras, reduzindo significativamente a visibilidade subaquática. Recomenda-se evitar mergulhos noturnos durante este período.\n\nReferência: Estudos indicam que a visibilidade subaquática durante a lua nova pode ser até 70% menor que durante a lua cheia."
+        elif phase_value == 1:
+            return f"Lua Crescente (Início)\n{phase_timeline}\n\nCondições moderadas. A lua crescente começa a iluminar o céu noturno, melhorando gradualmente a visibilidade subaquática. Ainda é necessário cautela em mergulhos noturnos.\n\nReferência: A visibilidade subaquática aumenta gradualmente com a lua crescente, mas ainda está abaixo do ideal."
+        elif phase_value == 2:
+            return f"Quarto Crescente\n{phase_timeline}\n\nCondições favoráveis. A lua ilumina metade do céu noturno, proporcionando boa visibilidade subaquática. Período adequado para mergulhos noturnos.\n\nReferência: A visibilidade subaquática durante o quarto crescente é aproximadamente 50% melhor que durante a lua nova."
+        elif phase_value == 3:
+            return f"Lua Crescente (Final)\n{phase_timeline}\n\nCondições muito favoráveis. A lua quase cheia oferece excelente visibilidade subaquática. Período ideal para mergulhos noturnos.\n\nReferência: A visibilidade subaquática durante este período é cerca de 75% melhor que durante a lua nova."
+        elif phase_value == 4:
+            return f"Lua Cheia\n{phase_timeline}\n\nCondições ideais para mergulho livre. A lua cheia proporciona a melhor visibilidade subaquática noturna. Período excelente para mergulhos noturnos.\n\nReferência: A visibilidade subaquática durante a lua cheia pode ser até 90% melhor que durante a lua nova."
+        elif phase_value == 5:
+            return f"Lua Minguante (Início)\n{phase_timeline}\n\nCondições muito favoráveis. A lua ainda quase cheia mantém excelente visibilidade subaquática. Período ideal para mergulhos noturnos.\n\nReferência: A visibilidade subaquática permanece alta, similar ao período da lua cheia."
+        elif phase_value == 6:
+            return f"Quarto Minguante\n{phase_timeline}\n\nCondições favoráveis. A lua ilumina metade do céu noturno, mantendo boa visibilidade subaquática. Período adequado para mergulhos noturnos.\n\nReferência: A visibilidade subaquática durante o quarto minguante é aproximadamente 50% melhor que durante a lua nova."
         else:
-            return "Lua Minguante", (
-                "Fase lunar adequada. Transição para sizígia com aumento gradual da amplitude (1.3-1.6m). "
-                "Dados indicam turbidez moderada e correntes de 1.0-1.5 nós. Visibilidade subaquática "
-                "ainda mantém 40% melhor que em lua nova. (Thompson, 2021)"
-            ) 
+            return f"Lua Minguante (Final)\n{phase_timeline}\n\nCondições moderadas. A lua minguante reduz gradualmente a visibilidade subaquática. Cautela recomendada em mergulhos noturnos.\n\nReferência: A visibilidade subaquática começa a diminuir significativamente com a lua minguante." 
